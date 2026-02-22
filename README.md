@@ -49,11 +49,15 @@ Need to generate documents for hundreds of records at once?
     - Track progress in real-time with a dynamic progress bar.
     - Documents are processed in the background and attached to the records automatically.
 
-### 4. Invocable Flow Action
-Automate document generation as part of your business processes.
+### 4. Invocable Flow Action (Single Record)
 - **Developer Name**: `Generate Document (Native)`
 - **Class**: `DocGenFlowAction`
 - **Usage**: Use this in any Salesforce Flow (Screen or Autolaunched) to generate a document when a specific event occurs (e.g., when an Opportunity is Closed Won).
+
+### 5. Invocable Flow Action (Bulk/Batch)
+- **Developer Name**: `Generate Bulk Documents`
+- **Class**: `DocGenBulkFlowAction`
+- **Usage**: Ideal for **Scheduled Flows**. Pass a Template ID and an optional SOQL condition to trigger a batch job that generates documents for all matching records in the background.
 
 ---
 

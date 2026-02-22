@@ -7,6 +7,7 @@
     <types>
         <members>DocGenBatch</members>
         <members>DocGenBulkController</members>
+        <members>DocGenBulkFlowAction</members>
         <members>DocGenBulkTests</members>
         <members>DocGenDataRetriever</members>
         <members>DocGenFlowAction</members>
