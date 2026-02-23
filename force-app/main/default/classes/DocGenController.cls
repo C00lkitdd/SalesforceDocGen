@@ -38,6 +38,31 @@ public with sharing class DocGenController {
         };
     }
 
+    @AuraEnabled
+    public static Id saveGeneratedDocument(Id recordId, String fileName, String base64Data) {
+        try {
+            ContentVersion cv = new ContentVersion();
+            cv.Title = fileName;
+            cv.PathOnClient = fileName + '.docx';
+            cv.VersionData = EncodingUtil.base64Decode(base64Data);
+            cv.IsMajorVersion = true;
+            insert cv;
+
+            Id contentDocId = [SELECT ContentDocumentId FROM ContentVersion WHERE Id = :cv.Id WITH SYSTEM_MODE].ContentDocumentId;
+
+            ContentDocumentLink cdl = new ContentDocumentLink();
+            cdl.ContentDocumentId = contentDocId;
+            cdl.LinkedEntityId = recordId;
+            cdl.ShareType = 'V';
+            cdl.Visibility = 'AllUsers';
+            insert cdl;
+
+            return contentDocId;
+        } catch (Exception e) {
+            throw new AuraHandledException('Error saving document to record: ' + e.getMessage());
+        }
+    }
+
     @AuraEnabled(cacheable=true)
     public static Map<String, Object> previewRecordData(Id recordId, String baseObject, String queryConfig) {
         if (recordId == null || String.isBlank(baseObject) || String.isBlank(queryConfig)) {

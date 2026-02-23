@@ -95,13 +95,27 @@
                                  pagebreak:    { mode: ['css', 'legacy'] } 
                              };
                              
-                             html2pdf().from(container).set(opt).save().then(() => {
-                                 console.log('PDF Engine: Download triggered.');
-                                 sendSuccess();
-                             }).catch(err => {
-                                 console.error(err);
-                                 sendError('PDF Generation Failed: ' + err.message);
-                             });
+                             const worker = html2pdf().from(container).set(opt);
+                             
+                             if (data.mode === 'save') {
+                                 // Return blob to LWC for saving to record
+                                 worker.output('arraybuffer').then(buffer => {
+                                     console.log('PDF Engine: Blob generated for saving.');
+                                     sendSuccess(buffer, data.fileName);
+                                 }).catch(err => {
+                                     console.error(err);
+                                     sendError('PDF Blob Generation Failed: ' + err.message);
+                                 });
+                             } else {
+                                 // Standard download
+                                 worker.save().then(() => {
+                                     console.log('PDF Engine: Download triggered.');
+                                     sendSuccess();
+                                 }).catch(err => {
+                                     console.error(err);
+                                     sendError('PDF Generation Failed: ' + err.message);
+                                 });
+                             }
                         }, 1000); // 1s wait for render
                         
                     } catch (e) {
@@ -115,8 +129,12 @@
                 window.parent.postMessage({ type: 'docgen_error', message: msg }, '*');
             }
 
-            function sendSuccess() {
-                window.parent.postMessage({ type: 'docgen_success' }, '*');
+            function sendSuccess(blob, fileName) {
+                window.parent.postMessage({ 
+                    type: 'docgen_success', 
+                    blob: blob,
+                    fileName: fileName
+                }, '*');
             }
         </script>
     </body>

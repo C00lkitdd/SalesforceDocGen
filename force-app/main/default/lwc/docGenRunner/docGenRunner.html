@@ -23,6 +23,17 @@
                     class="slds-m-bottom_medium">
                 </lightning-combobox>
 
+                <div class="slds-m-bottom_medium">
+                    <lightning-radio-group
+                        name="outputMode"
+                        label="Action"
+                        options={outputOptions}
+                        value={outputMode}
+                        onchange={handleOutputModeChange}
+                        type="button">
+                    </lightning-radio-group>
+                </div>
+
                 <lightning-button 
                     variant="brand" 
                     label="Generate Document" 
