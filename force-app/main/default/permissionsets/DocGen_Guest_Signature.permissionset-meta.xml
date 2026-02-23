@@ -13,11 +13,6 @@
         <enabled>true</enabled>
     </classAccesses>
     <description>Grants Site Guest User permission to execute the DocGen Signature Submission flow and trigger renditions.</description>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>DocGen_Rendition_Event__e.Source_CV_Id__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
     <label>DocGen Guest Signature</label>
     <objectPermissions>
         <allowCreate>true</allowCreate>
