@@ -27,6 +27,10 @@
         <name>ApexClass</name>
     </types>
     <types>
+        <members>DocGen_Auth_Provider</members>
+        <name>AuthProvider</name>
+    </types>
+    <types>
         <members>DocGen_Loopback_Auth</members>
         <name>ExternalCredential</name>
     </types>
