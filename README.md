@@ -2,7 +2,7 @@
 
 **A free, native, production-ready document engine for Salesforce.**
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg)](#quick-install)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](#quick-install)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Salesforce-00A1E0.svg)](https://www.salesforce.com)
 
@@ -20,35 +20,37 @@ This project gives you a professional-grade document engine -- template manageme
 
 ## Quick Install
 
-**Subscriber Package Version ID**: `04tdL000000Ooq5QAC`
+**Subscriber Package Version ID**: `04tdL000000OowXQAS`
 
 **CLI:**
 ```bash
-sf package install --package 04tdL000000Ooq5QAC --wait 10 --installation-key-bypass
+sf package install --package 04tdL000000OowXQAS --wait 10 --installation-key-bypass
 ```
 
 **Browser:**
-- [Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000Ooq5QAC)
-- [Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000Ooq5QAC)
+- [Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000OowXQAS)
+- [Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000OowXQAS)
 
 > Select **Install for Admins Only** during installation, then assign permission sets to your users afterward.
 
 ---
 
-## What's New in v0.5.0
+## What's New in v0.7.0
 
-This release represents a major evolution from the initial v0.1.0:
+- **Bulk PDF Generation Fix** -- All records in a bulk generation job now correctly receive PDF renditions, not just the first. Renditions are accumulated across batch transactions via `Database.Stateful` and enqueued as a single job from `finish()`.
+- **Transaction Finalizer Retries** -- PDF rendition retries now use `System.attachFinalizer()` instead of direct queueable chaining, avoiding Salesforce's 5-level queueable depth limit.
 
-- **100% Server-Side Document Generation** -- Replaced client-side docxtemplater/PizZip with a native Apex engine using Salesforce's Compression API. All merge tag processing, image injection, and loop expansion now happens server-side with zero browser dependencies.
-- **Multi-Signer Signature Roles** -- Define roles (Buyer, Seller, Witness, etc.) per template. Each signer receives a unique secure link and signs independently. Documents are stamped only after all parties complete.
-- **Visualforce Signature Portal** -- Replaced the Experience Cloud Flow approach with a standalone VF page. Simpler setup, better mobile experience, client-side document preview with live signature rendering.
-- **Rich Text & HTML Support** -- Template tags now preserve rich text formatting. Embedded `<img>` tags in rich text fields are automatically extracted and injected as DrawingML images in the DOCX output.
-- **Image Size Controls** -- Use `{%ImageField:WxH}` syntax to specify exact pixel dimensions for injected images.
-- **Client-Side PDF Rendering** -- VF-based PDF engine uses docx-preview.js for high-fidelity DOCX rendering, then html2pdf.js for conversion. Cross-origin postMessage communication between LWC and VF iframe.
-- **Background PDF Rendition** -- Asynchronous PDF rendering via Named Credential loopback with built-in retry mechanism for Salesforce's rendition API latency.
-- **Previous Signature Request Recall** -- View and copy links from past signature requests directly from the record page.
-- **SLDS Mobile Accessibility** -- Updated all components to use density-aware utility classes and labeled buttons for mobile compatibility.
-- **2GP Package Ready** -- Full SYSTEM_MODE query support for package-internal objects, permission set-aware test harness, and security-reviewed stripInaccessible enforcement.
+### v0.6.0
+
+- **Security Hardening** -- CRUD/FLS enforcement, SOQL injection hardening, postMessage origin validation, error message sanitization, HTTPS enforcement, and removal of unused dependencies.
+
+### v0.5.0
+
+- **100% Server-Side Document Generation** -- Native Apex engine using Salesforce's Compression API. All merge tag processing, image injection, and loop expansion happens server-side with zero browser dependencies.
+- **Multi-Signer Signature Roles** -- Define roles (Buyer, Seller, Witness, etc.) per template. Each signer receives a unique secure link and signs independently.
+- **Rich Text & HTML Support** -- Template tags preserve rich text formatting. Embedded `<img>` tags are automatically injected as DrawingML images.
+- **Background PDF Rendition** -- Asynchronous PDF rendering via Named Credential loopback with built-in retry mechanism.
+- **2GP Package Ready** -- Full SYSTEM_MODE query support, permission set-aware test harness, and security-reviewed stripInaccessible enforcement.
 
 ---
 

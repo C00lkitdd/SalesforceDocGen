@@ -1,12 +1,12 @@
 {
   "packageDirectories": [
     {
-      "versionName": "v0.6.0 - Security Hardening",
-      "versionNumber": "0.6.0.NEXT",
+      "versionName": "v0.7.0 - Bulk PDF Fix",
+      "versionNumber": "0.7.0.NEXT",
       "path": "force-app",
       "default": true,
       "package": "Document Generation",
-      "versionDescription": "Security hardening for AppExchange readiness: CRUD/FLS enforcement, SOQL injection hardening, postMessage origin validation, error message sanitization, HTTPS enforcement, and removal of unused dependencies."
+      "versionDescription": "Fix bulk generation PDF chaining: all records now receive PDFs. Uses Transaction Finalizer for retry depth, single queueable enqueue from batch finish()."
     }
   ],
   "name": "Document Generation",
@@ -25,6 +25,7 @@
     "Document Generation@0.5.0-1": "04tdL000000OjlZQAS",
     "Document Generation@0.5.0-2": "04tdL000000OjnBQAS",
     "Document Generation@0.5.0-3": "04tdL000000Ooi1QAC",
-    "Document Generation@0.6.0-1": "04tdL000000Ooq5QAC"
+    "Document Generation@0.6.0-1": "04tdL000000Ooq5QAC",
+    "Document Generation@0.7.0-1": "04tdL000000OowXQAS"
   }
 }

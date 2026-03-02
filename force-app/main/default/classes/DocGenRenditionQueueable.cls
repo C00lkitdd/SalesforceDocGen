@@ -15,8 +15,12 @@ public with sharing class DocGenRenditionQueueable implements Queueable, Databas
     public void execute(QueueableContext context) {
         // Attach a Finalizer for retries — re-enqueuing from a Finalizer does NOT
         // increment the queueable chain depth, avoiding the 5-level limit.
-        DocGenRenditionFinalizer fin = new DocGenRenditionFinalizer(retryCount);
-        System.attachFinalizer(fin);
+        // (attachFinalizer is not allowed in test context)
+        DocGenRenditionFinalizer fin = null;
+        if (!Test.isRunningTest()) {
+            fin = new DocGenRenditionFinalizer(retryCount);
+            System.attachFinalizer(fin);
+        }
 
         Map<Id, Id> failedCvs = new Map<Id, Id>();
         List<ContentVersion> pdfsToInsert = new List<ContentVersion>();
@@ -97,7 +101,9 @@ public with sharing class DocGenRenditionQueueable implements Queueable, Databas
         }
 
         // Pass failures to the Finalizer for retry (avoids chain depth limit)
-        fin.failedCvs = failedCvs;
+        if (fin != null) {
+            fin.failedCvs = failedCvs;
+        }
     }
 
     private void updateAuditHashes(List<Id> sourceCvIds, List<ContentVersion> pdfCvs) {
