@@ -615,18 +615,50 @@ const VERSION_COLUMNS = [
             // 6. Docxtemplater
             console.log('DEBUG: Docxtemplater Init...');
             let doc;
+            let _imageTagCounter = 0;
+            const _pendingImageData = {};
+
             try {
                 doc = new window.docxtemplater(zip, {
                     paragraphLoop: true,
                     linebreaks: true,
-                    nullGetter: (part) => { 
+                    nullGetter: (part) => {
                         if (!part.module || part.module === "rawxml") return "";
-                        return ""; 
+                        return "";
                     },
                     parser: (tag) => {
                          return {
                             get: (scope, context) => {
                                 if (tag === '.') return scope;
+                                // Image tags: resolve from current scope and generate unique placeholder
+                                if (tag.startsWith('%')) {
+                                    const fieldName = tag.substring(1);
+                                    const keys = fieldName.split('.');
+                                    let val = scope;
+                                    for (const key of keys) {
+                                        if (val === undefined || val === null) return '';
+                                        if (Object.prototype.hasOwnProperty.call(val, key)) {
+                                            val = val[key];
+                                        } else {
+                                            const lowerKey = key.toLowerCase();
+                                            const matchedKey = Object.keys(val).find(k => k.toLowerCase() === lowerKey);
+                                            if (matchedKey) {
+                                                val = val[matchedKey];
+                                            } else {
+                                                return '';
+                                            }
+                                        }
+                                    }
+                                    if (val) {
+                                        _imageTagCounter++;
+                                        const placeholder = 'DOCGENIMG' + _imageTagCounter;
+                                        _pendingImageData[placeholder] = String(val);
+                                        console.log('DocGen: Image tag resolved → placeholder ' + placeholder + ', value length: ' + String(val).length + ', hasDataUri: ' + String(val).includes('data:image'));
+                                        return '{%' + placeholder + '}';
+                                    }
+                                    console.log('DocGen: Image tag resolved to empty/null');
+                                    return '';
+                                }
                                 const keys = tag.split('.');
                                 let value = scope;
                                 for (let i = 0; i < keys.length; i++) {
@@ -643,6 +675,12 @@ const VERSION_COLUMNS = [
                                             return '';
                                         }
                                     }
+                                }
+                                // Strip HTML from rich text values for regular text tags
+                                if (typeof value === 'string' && value.includes('<') && (value.includes('<p') || value.includes('<div') || value.includes('<span') || value.includes('<br'))) {
+                                    const tmp = document.createElement('div');
+                                    tmp.innerHTML = value;
+                                    value = tmp.textContent || tmp.innerText || '';
                                 }
                                 return value;
                             }
@@ -664,8 +702,12 @@ const VERSION_COLUMNS = [
                 doc.render(recordData);
             } catch (renderErr) {
                  console.error('Render Error:', renderErr);
-                throw renderErr; 
+                throw renderErr;
             }
+
+            // 7b. Post-process: inject images using unique placeholder data
+            console.log('DEBUG: Post-processing images...');
+            this.injectImages(doc.getZip(), _pendingImageData);
 
             // 8. Output
             console.log('DEBUG: Outputting. TemplateType:', templateType);
@@ -723,6 +765,137 @@ const VERSION_COLUMNS = [
             this.showToast('Generation Failed', userMsg, 'error');
         } finally {
             this.isLoadingVersions = false;
+        }
+    }
+
+    /**
+     * Post-processes a PizZip instance to replace {%PlaceholderKey} tags with actual images.
+     * Uses imageDataMap (keyed by unique placeholder) to resolve image data per instance.
+     */
+    injectImages(zip, imageDataMap) {
+        console.log('DocGen: injectImages called with', Object.keys(imageDataMap).length, 'pending images:', Object.keys(imageDataMap));
+        const imageRegex = /\{%([^}]+)\}/g;
+        let imageCount = 0;
+        const images = [];
+
+        const extractImage = (strVal) => {
+            if (strVal.includes('<img')) {
+                const match = strVal.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
+                if (match) {
+                    const src = match[1];
+                    if (src.startsWith('data:image/')) {
+                        const base64Part = src.split(',')[1];
+                        if (base64Part) {
+                            const bin = atob(base64Part);
+                            const arr = new Uint8Array(bin.length);
+                            for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                            return { data: arr, ext: src.includes('jpeg') || src.includes('jpg') ? 'jpeg' : 'png' };
+                        }
+                    }
+                }
+                return null;
+            }
+            if (strVal.startsWith('data:image/')) {
+                const base64Part = strVal.split(',')[1];
+                if (base64Part) {
+                    const bin = atob(base64Part);
+                    const arr = new Uint8Array(bin.length);
+                    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                    return { data: arr, ext: strVal.includes('jpeg') || strVal.includes('jpg') ? 'jpeg' : 'png' };
+                }
+            }
+            return null;
+        };
+
+        const xmlFiles = ['word/document.xml'];
+        for (const fname of Object.keys(zip.files)) {
+            if ((fname.startsWith('word/header') || fname.startsWith('word/footer')) && fname.endsWith('.xml')) {
+                xmlFiles.push(fname);
+            }
+        }
+
+        for (const xmlFile of xmlFiles) {
+            if (!zip.files[xmlFile]) continue;
+            let xml = zip.file(xmlFile).asText();
+            let hasChanges = false;
+
+            xml = xml.replace(imageRegex, (fullMatch, placeholderKey) => {
+                hasChanges = true;
+
+                const val = imageDataMap[placeholderKey];
+                if (!val) {
+                    console.log('DocGen: injectImages - no value for placeholder:', placeholderKey);
+                    return '';
+                }
+
+                const imgResult = extractImage(val);
+                if (!imgResult) {
+                    console.log('DocGen: injectImages - extractImage returned null for placeholder:', placeholderKey, 'value starts with:', val.substring(0, 100));
+                    return '';
+                }
+
+                imageCount++;
+                const relId = 'rIdImg' + imageCount;
+                const fileName = 'docgen_image_' + imageCount + '.' + imgResult.ext;
+                images.push({ relId, fileName, data: imgResult.data });
+
+                const cx = 3657600;
+                const cy = 2743200;
+
+                return '</w:t></w:r>' +
+                    '<w:r><w:drawing>' +
+                      '<wp:inline distT="0" distB="0" distL="0" distR="0">' +
+                        '<wp:extent cx="' + cx + '" cy="' + cy + '"/>' +
+                        '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
+                        '<wp:docPr id="' + (900 + imageCount) + '" name="DocGenImage' + imageCount + '"/>' +
+                        '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+                        '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+                          '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+                            '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+                              '<pic:nvPicPr><pic:cNvPr id="0" name="DocGenImage' + imageCount + '"/><pic:cNvPicPr/></pic:nvPicPr>' +
+                              '<pic:blipFill>' +
+                                '<a:blip r:embed="' + relId + '"/>' +
+                                '<a:stretch><a:fillRect/></a:stretch>' +
+                              '</pic:blipFill>' +
+                              '<pic:spPr>' +
+                                '<a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm>' +
+                                '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
+                              '</pic:spPr>' +
+                            '</pic:pic>' +
+                          '</a:graphicData>' +
+                        '</a:graphic>' +
+                      '</wp:inline>' +
+                    '</w:drawing></w:r><w:r><w:t xml:space="preserve">';
+            });
+
+            if (hasChanges) {
+                zip.file(xmlFile, xml);
+            }
+        }
+
+        if (images.length > 0) {
+            if (zip.files['[Content_Types].xml']) {
+                let ct = zip.file('[Content_Types].xml').asText();
+                if (!ct.includes('Extension="png"')) {
+                    ct = ct.replace('</Types>', '<Default Extension="png" ContentType="image/png"/></Types>');
+                }
+                if (!ct.includes('Extension="jpeg"')) {
+                    ct = ct.replace('</Types>', '<Default Extension="jpeg" ContentType="image/jpeg"/></Types>');
+                }
+                zip.file('[Content_Types].xml', ct);
+            }
+            if (zip.files['word/_rels/document.xml.rels']) {
+                let rels = zip.file('word/_rels/document.xml.rels').asText();
+                for (const img of images) {
+                    const newRel = '<Relationship Id="' + img.relId + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + img.fileName + '"/>';
+                    rels = rels.replace('</Relationships>', newRel + '</Relationships>');
+                }
+                zip.file('word/_rels/document.xml.rels', rels);
+            }
+            for (const img of images) {
+                zip.file('word/media/' + img.fileName, img.data);
+            }
+            console.log('DocGen: Injected ' + images.length + ' image(s) into document.');
         }
     }
 

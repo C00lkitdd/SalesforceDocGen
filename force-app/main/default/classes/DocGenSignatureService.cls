@@ -80,6 +80,128 @@ public without sharing class DocGenSignatureService {
     }
 
     /**
+     * Data wrapper for multi-signer stamping.
+     */
+    public class SignerData {
+        public String roleName;
+        public String base64Image;
+        public SignerData(String roleName, String base64Image) {
+            this.roleName = roleName;
+            this.base64Image = base64Image;
+        }
+    }
+
+    /**
+     * Stamps ALL signer signatures into a DOCX at their named placeholders.
+     * Each signer's role maps to {#Signature_RoleName} in the document.
+     * Falls back to legacy {#Signature} for single signer with blank role.
+     */
+    public static Blob stampAllSignaturesToBlob(Id sourceCvId, List<SignerData> signers) {
+        ContentVersion cv = [SELECT Id, VersionData, Title FROM ContentVersion WHERE Id = :sourceCvId WITH SYSTEM_MODE LIMIT 1];
+        if (cv == null || cv.VersionData == null) {
+            throw new SignatureException('Source document not found or has no content.');
+        }
+
+        Blob docxBlob = cv.VersionData;
+        Compression.ZipReader reader = new Compression.ZipReader(docxBlob);
+        Compression.ZipWriter writer = new Compression.ZipWriter();
+
+        // Build per-signer metadata: relationship IDs, file names, blobs
+        List<Map<String, String>> signerMeta = new List<Map<String, String>>();
+        List<Blob> signerBlobs = new List<Blob>();
+        Integer docPrIdBase = 888;
+
+        for (Integer i = 0; i < signers.size(); i++) {
+            SignerData sd = signers[i];
+            String relId = 'rIdSig' + String.valueOf(i) + String.valueOf(System.currentTimeMillis()).right(5);
+            String fileName = 'signature_' + relId + '.png';
+            // Build placeholder tag: blank role → {#Signature}, otherwise {#Signature_RoleName}
+            String placeholder;
+            if (String.isBlank(sd.roleName)) {
+                placeholder = '{#Signature}';
+            } else {
+                placeholder = '{#Signature_' + sd.roleName.replaceAll(' ', '_') + '}';
+            }
+            Map<String, String> meta = new Map<String, String>{
+                'relId' => relId,
+                'fileName' => fileName,
+                'placeholder' => placeholder,
+                'docPrId' => String.valueOf(docPrIdBase + i)
+            };
+            signerMeta.add(meta);
+            signerBlobs.add(EncodingUtil.base64Decode(sd.base64Image));
+        }
+
+        for (Compression.ZipEntry entry : reader.getEntries()) {
+            String name = entry.getName();
+
+            if (name == '[Content_Types].xml') {
+                String contentTypes = reader.extract(name).toString();
+                if (!contentTypes.contains('Extension="png"')) {
+                    contentTypes = contentTypes.replace('</Types>', '<Default Extension="png" ContentType="image/png"/></Types>');
+                }
+                writer.addEntry(name, Blob.valueOf(contentTypes));
+
+            } else if (name == 'word/_rels/document.xml.rels') {
+                String rels = reader.extract(name).toString();
+                for (Map<String, String> meta : signerMeta) {
+                    String newRel = '<Relationship Id="' + meta.get('relId') + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + meta.get('fileName') + '"/>';
+                    rels = rels.replace('</Relationships>', newRel + '</Relationships>');
+                }
+                writer.addEntry(name, Blob.valueOf(rels));
+
+            } else if (name == 'word/document.xml') {
+                String docXml = reader.extract(name).toString();
+
+                for (Map<String, String> meta : signerMeta) {
+                    String drawingXml =
+                        '<w:r><w:drawing>' +
+                          '<wp:inline distT="0" distB="0" distL="0" distR="0">' +
+                            '<wp:extent cx="1905000" cy="476250"/>' +
+                            '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
+                            '<wp:docPr id="' + meta.get('docPrId') + '" name="Signature"/>' +
+                            '<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+                            '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' +
+                              '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+                                '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+                                  '<pic:nvPicPr><pic:cNvPr id="0" name="Signature"/><pic:cNvPicPr/></pic:nvPicPr>' +
+                                  '<pic:blipFill>' +
+                                    '<a:blip r:embed="' + meta.get('relId') + '"/>' +
+                                    '<a:stretch><a:fillRect/></a:stretch>' +
+                                  '</pic:blipFill>' +
+                                  '<pic:spPr>' +
+                                    '<a:xfrm><a:off x="0" y="0"/><a:ext cx="1905000" cy="476250"/></a:xfrm>' +
+                                    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
+                                  '</pic:spPr>' +
+                                '</pic:pic>' +
+                              '</a:graphicData>' +
+                            '</a:graphic>' +
+                          '</wp:inline>' +
+                        '</w:drawing></w:r>';
+
+                    String placeholder = meta.get('placeholder');
+                    if (docXml.contains(placeholder)) {
+                        docXml = docXml.replace(placeholder, '</w:t></w:r>' + drawingXml + '<w:r><w:t xml:space="preserve">');
+                    } else {
+                        // Append at end of document as fallback
+                        docXml = docXml.replace('</w:body>', '<w:p><w:r><w:t xml:space="preserve">' + placeholder.substringBetween('{#', '}') + ': </w:t></w:r>' + drawingXml + '</w:p></w:body>');
+                    }
+                }
+                writer.addEntry(name, Blob.valueOf(docXml));
+            } else {
+                writer.addEntry(name, reader.extract(name));
+            }
+        }
+
+        // Add all signature images
+        for (Integer i = 0; i < signerMeta.size(); i++) {
+            writer.addEntry('word/media/' + signerMeta[i].get('fileName'), signerBlobs[i]);
+        }
+
+        return writer.getArchive();
+    }
+
+    /**
      * Stamping legacy entry point - inserts the DOCX to DB and returns ID.
      */
     public static Id stampSignature(Id sourceCvId, String base64Image, String requestNumber, String relatedRecordId) {

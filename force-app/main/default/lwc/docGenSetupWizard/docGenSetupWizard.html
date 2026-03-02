@@ -11,7 +11,7 @@
                 <!-- Introduction Banner -->
                 <div class="slds-notify slds-notify_alert slds-theme_info slds-m-bottom_large" role="alert">
                     <span class="slds-assistive-text">info</span>
-                    <h2>Public E-Signatures require a secure API Loopback to generate background PDFs. Complete these steps to configure the OAuth integration and Experience Site so Guest Users can sign documents securely.</h2>
+                    <h2>Public E-Signatures require a secure API Loopback to generate background PDFs. Complete these steps to configure the OAuth integration and Salesforce Site so Guest Users can sign documents securely.</h2>
                 </div>
 
                 <!-- Progress Bar -->
@@ -19,7 +19,7 @@
                     <lightning-progress-step label="1. Connected App" value="1" onclick={handleStepClick}></lightning-progress-step>
                     <lightning-progress-step label="2. Auth Provider" value="2" onclick={handleStepClick}></lightning-progress-step>
                     <lightning-progress-step label="3. Named Credential" value="3" onclick={handleStepClick}></lightning-progress-step>
-                    <lightning-progress-step label="4. Experience Site" value="4" onclick={handleStepClick}></lightning-progress-step>
+                    <lightning-progress-step label="4. Salesforce Site" value="4" onclick={handleStepClick}></lightning-progress-step>
                 </lightning-progress-indicator>
 
                 <!-- Step 1 -->
@@ -82,25 +82,39 @@
                 <!-- Step 4 -->
                 <template if:true={isStep4}>
                     <div class="slds-box slds-theme_default">
-                        <h2 class="slds-text-heading_medium slds-m-bottom_small">Step 4: Experience Site Configuration</h2>
-                        <p class="slds-m-bottom_medium">Enter the base URL of your Experience Cloud site and the path to the page where you embedded the <strong>DocGen Signature Submission</strong> flow.</p>
-                        
+                        <h2 class="slds-text-heading_medium slds-m-bottom_small">Step 4: Salesforce Site Configuration</h2>
+                        <ol class="slds-list_ordered slds-m-left_medium slds-m-bottom_medium slds-text-body_regular">
+                            <li>Go to <strong>Setup &gt; Sites</strong> (search "Sites" in Quick Find).</li>
+                            <li>If you don't have a Sites domain registered, register one (e.g., <strong>docgen</strong>).</li>
+                            <li>Click <strong>New</strong> to create a new site:
+                                <ul class="slds-list_dotted slds-m-left_medium">
+                                    <li>Site Label: <strong>DocGen Signatures</strong></li>
+                                    <li>Active Site Home Page: <strong>DocGenSignature</strong></li>
+                                    <li>Check <strong>Active</strong></li>
+                                </ul>
+                            </li>
+                            <li>After saving, click <strong>Public Access Settings</strong> on the Site detail page.</li>
+                            <li>In the Guest User profile, go to <strong>Enabled Visualforce Page Access</strong> and add <strong>DocGenSignature</strong>.</li>
+                            <li>Assign the <strong>DocGen Guest Signature</strong> permission set to the Site Guest User.</li>
+                            <li>Copy the <strong>Site URL</strong> from the Site detail page and paste it below.</li>
+                        </ol>
+
                         <div class="slds-form-element slds-m-bottom_medium">
-                            <lightning-input 
-                                type="url" 
-                                label="Experience Site URL (with page path)" 
-                                placeholder="https://yoursite.com/s/sign"
+                            <lightning-input
+                                type="url"
+                                label="Salesforce Site Base URL"
+                                placeholder="https://docgen.my.salesforce-sites.com"
                                 value={experienceSiteUrl}
                                 onchange={handleUrlChange}
                                 required>
                             </lightning-input>
-                            <p class="slds-text-body_small slds-m-top_xx-small">Example: https://docgen-portal.my.site.com/s/sign-document</p>
+                            <p class="slds-text-body_small slds-m-top_xx-small">Base URL only, no path. Example: https://docgen.my.salesforce-sites.com</p>
                         </div>
 
                         <div class="slds-notify slds-notify_alert slds-theme_success slds-m-bottom_medium" role="alert">
                             <h2>Configuration Complete! E-Signatures are ready for production.</h2>
                         </div>
-                        
+
                         <lightning-button label="Back" onclick={prevStep} class="slds-m-right_small"></lightning-button>
                         <lightning-button variant="brand" label="Save Settings" onclick={handleSaveSettings}></lightning-button>
                     </div>

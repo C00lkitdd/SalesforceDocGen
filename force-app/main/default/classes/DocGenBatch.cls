@@ -1,4 +1,4 @@
-global with sharing class DocGenBatch implements Database.Batchable<SObject>, Database.Stateful {
+global with sharing class DocGenBatch implements Database.Batchable<SObject>, Database.Stateful, Database.AllowsCallouts {
     
     global Id jobId;
     global Id templateId;

@@ -27,9 +27,11 @@ public with sharing class DocGenBulkController {
             insert job;
 
             // 2. Run Batch
-            // Batch Size 10 to avoid CPU limits during Zip creation
+            // Batch Size 1: each record needs its own transaction so callouts
+            // (rich text image resolution) happen before DML (ContentVersion insert).
+            // Salesforce blocks callouts after uncommitted DML in the same transaction.
             DocGenBatch batch = new DocGenBatch(job.Id);
-            Database.executeBatch(batch, 10);
+            Database.executeBatch(batch, 1);
 
             return job.Id;
         } catch (Exception e) {

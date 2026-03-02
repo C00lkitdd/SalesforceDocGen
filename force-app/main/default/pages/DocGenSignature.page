@@ -1,0 +1,653 @@
+<apex:page controller="DocGenSignatureController" showHeader="false" sidebar="false"
+           standardStylesheets="false" applyBodyTag="false" applyHtmlTag="false" docType="html-5.0">
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Document Signature</title>
+    <apex:slds />
+
+    <!-- PDF Engine Libraries -->
+    <script src="{!URLFOR($Resource.DocGenEngine, 'jszip.min.js')}"></script>
+    <script src="{!URLFOR($Resource.DocGenEngine, 'docx-preview.js')}"></script>
+    <script src="{!URLFOR($Resource.DocGenEngine, 'html2pdf.js')}"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background-color: #f3f2f2;
+            font-family: 'Salesforce Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #181818;
+        }
+        .page-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        /* Card Container */
+        .sig-card {
+            max-width: 640px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        .sig-card h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 0.25rem 0;
+        }
+        .sig-card .subtitle {
+            font-size: 0.875rem;
+            color: #706e6b;
+            margin: 0 0 1.25rem 0;
+        }
+
+        /* Canvas */
+        .canvas-wrapper {
+            width: 100%;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            background-color: #f8fafc;
+            overflow: hidden;
+            touch-action: none;
+            margin-bottom: 1rem;
+        }
+        .signature-pad {
+            width: 100%;
+            height: 300px;
+            cursor: crosshair;
+            display: block;
+        }
+        .signature-pad:active { cursor: grabbing; }
+
+        /* Instructions */
+        .instructions {
+            font-size: 0.8125rem;
+            color: #706e6b;
+            margin-bottom: 1rem;
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1.25rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: 1px solid #dddbda;
+            background: #ffffff;
+            color: #181818;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn:hover { background: #f3f2f2; }
+        .btn-brand {
+            background: #0176d3;
+            color: #ffffff;
+            border-color: #0176d3;
+        }
+        .btn-brand:hover { background: #014486; }
+        .btn-brand:disabled {
+            background: #c9c7c5;
+            border-color: #c9c7c5;
+            cursor: not-allowed;
+        }
+
+        /* Preview link */
+        .preview-link {
+            display: inline-block;
+            font-size: 0.8125rem;
+            color: #0176d3;
+            margin-bottom: 1rem;
+            text-decoration: none;
+        }
+        .preview-link:hover { text-decoration: underline; }
+
+        /* Error State */
+        .error-card {
+            max-width: 480px;
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .error-icon {
+            font-size: 3rem;
+            color: #ea001e;
+            margin-bottom: 0.5rem;
+        }
+        .error-card h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #ea001e;
+        }
+        .error-card p { color: #706e6b; margin: 0; }
+
+        /* Role Badge */
+        .role-badge {
+            display: inline-block;
+            background: #0176d3;
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+        .progress-info {
+            font-size: 0.8125rem;
+            color: #706e6b;
+            margin: 0.25rem 0 1rem 0;
+        }
+
+        /* Success State */
+        .success-icon {
+            font-size: 3rem;
+            color: #2e844a;
+            margin-bottom: 0.5rem;
+        }
+        .success-card {
+            max-width: 480px;
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #91db8b;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .success-card h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #2e844a;
+        }
+        .success-card p { color: #706e6b; margin: 0; }
+
+        /* Waiting State (non-last signer) */
+        .waiting-card {
+            max-width: 480px;
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #ffd27a;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .waiting-icon {
+            font-size: 3rem;
+            color: #fe9339;
+            margin-bottom: 0.5rem;
+        }
+        .waiting-card h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: #fe9339;
+        }
+        .waiting-card p { color: #706e6b; margin: 0; }
+
+        /* Processing State */
+        .processing-card {
+            max-width: 480px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            padding: 2rem;
+            text-align: center;
+        }
+        .processing-card h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0.75rem 0 0.5rem 0;
+        }
+        .processing-card p { color: #706e6b; margin: 0; }
+
+        /* Spinner */
+        .spinner-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #dddbda;
+            border-top-color: #0176d3;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Hidden PDF render zone */
+        .docx-wrapper { padding: 0 !important; margin: 0 !important; background: transparent !important; }
+        section.docx-render { margin: 0 !important; padding: 0 !important; }
+        table, tr, td, th { page-break-inside: avoid !important; }
+        h1, h2, h3, h4 { page-break-after: avoid !important; }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+
+        <!-- STATE: Loading -->
+        <div id="state-loading">
+            <div class="spinner-container">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- STATE: Error -->
+        <div id="state-error" style="display:none">
+            <div class="error-card">
+                <div class="error-icon">&#9888;</div>
+                <h2>Signature Error</h2>
+                <p id="error-message"></p>
+            </div>
+        </div>
+
+        <!-- STATE: Signature Pad -->
+        <div id="state-signature" style="display:none">
+            <div class="sig-card">
+                <h2 id="doc-title"></h2>
+                <p class="subtitle">
+                    Signing as: <strong id="signer-name"></strong>
+                    <span id="role-badge" class="role-badge" style="display:none"></span>
+                </p>
+                <p id="progress-info" class="progress-info" style="display:none"></p>
+                <a id="doc-preview-link" href="#" target="_blank" class="preview-link" style="display:none">Preview Document</a>
+
+                <p class="instructions">Use your mouse or finger to sign inside the box below.</p>
+                <div class="canvas-wrapper">
+                    <canvas id="signature-canvas" class="signature-pad"></canvas>
+                </div>
+
+                <div class="btn-row">
+                    <button id="btn-clear" class="btn" type="button">Clear</button>
+                    <button id="btn-submit" class="btn btn-brand" type="button" disabled="disabled">Complete Signature</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATE: Processing -->
+        <div id="state-processing" style="display:none">
+            <div class="processing-card">
+                <div class="spinner-container" style="padding:0.5rem">
+                    <div class="spinner"></div>
+                </div>
+                <h2>Processing Signature</h2>
+                <p id="processing-status">Stamping signature onto document...</p>
+            </div>
+        </div>
+
+        <!-- STATE: Success -->
+        <div id="state-success" style="display:none">
+            <div class="success-card">
+                <div class="success-icon">&#10003;</div>
+                <h2>Signature Complete</h2>
+                <p>Your document has been signed and processed securely. You may close this window.</p>
+            </div>
+        </div>
+
+        <!-- STATE: Waiting (non-last signer, signature recorded) -->
+        <div id="state-waiting" style="display:none">
+            <div class="waiting-card">
+                <div class="waiting-icon">&#10003;</div>
+                <h2>Signature Recorded</h2>
+                <p id="waiting-message">Your signature has been recorded. Waiting for other signers to complete.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden PDF rendering zone (off-screen) -->
+    <div id="pdf-render-zone" style="position:absolute; left:-9999px; top:0; width:816px; background:white; padding:0;"></div>
+
+    <script>
+    (function() {
+        // ===== STATE MANAGEMENT =====
+        var stateIds = ['loading', 'error', 'signature', 'processing', 'success', 'waiting'];
+        function showState(name) {
+            for (var i = 0; i < stateIds.length; i++) {
+                document.getElementById('state-' + stateIds[i]).style.display = (stateIds[i] === name) ? '' : 'none';
+            }
+        }
+        function showError(msg) {
+            document.getElementById('error-message').textContent = msg;
+            showState('error');
+        }
+        function updateStatus(msg) {
+            document.getElementById('processing-status').textContent = msg;
+        }
+
+        // ===== TOKEN FROM URL =====
+        var urlParams = new URLSearchParams(window.location.search);
+        var token = urlParams.get('token');
+
+        if (!token) {
+            showError('Invalid or missing security token. Please check your signature link.');
+            return;
+        }
+
+        // ===== STEP 1: VALIDATE TOKEN =====
+        Visualforce.remoting.Manager.invokeAction(
+            '{!$RemoteAction.DocGenSignatureController.validateToken}',
+            token,
+            function(result, event) {
+                if (event.status && result && result.isValid) {
+                    initSignaturePad(result);
+                } else {
+                    var msg = (result && result.errorMessage) ? result.errorMessage : 'This signature request is no longer active.';
+                    showError(msg);
+                }
+            },
+            { escape: false }
+        );
+
+        // ===== CANVAS STATE =====
+        var ctx, canvasRect, lastX, lastY;
+        var isDrawing = false;
+        var isCanvasEmpty = true;
+
+        // ===== INIT SIGNATURE PAD =====
+        // Track multi-signer state
+        var isMultiSigner = false;
+        var totalSigners = 1;
+
+        function initSignaturePad(validationResult) {
+            // Populate document info
+            document.getElementById('doc-title').textContent = validationResult.documentTitle || 'Confidential Document';
+            document.getElementById('signer-name').textContent = validationResult.signerName || '';
+
+            // Show role badge if present
+            if (validationResult.roleName) {
+                var badge = document.getElementById('role-badge');
+                badge.textContent = validationResult.roleName;
+                badge.style.display = 'inline-block';
+            }
+
+            // Show progress if multi-signer
+            totalSigners = validationResult.totalSigners || 1;
+            var signedCount = validationResult.signedCount || 0;
+            isMultiSigner = totalSigners > 1;
+
+            if (isMultiSigner) {
+                var progressEl = document.getElementById('progress-info');
+                progressEl.textContent = 'Signer ' + (signedCount + 1) + ' of ' + totalSigners;
+                progressEl.style.display = 'block';
+            }
+
+            if (validationResult.documentUrl) {
+                var link = document.getElementById('doc-preview-link');
+                link.href = validationResult.documentUrl;
+                link.style.display = 'inline-block';
+            }
+
+            showState('signature');
+
+            // Canvas setup (ported from docGenSignaturePad.js)
+            var canvas = document.getElementById('signature-canvas');
+            var wrapper = canvas.parentElement;
+            canvas.width = wrapper.offsetWidth;
+            canvas.height = 300;
+
+            ctx = canvas.getContext('2d');
+            ctx.strokeStyle = '#000000';
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 3;
+
+            // Mouse events
+            canvas.addEventListener('mousedown', function(e) {
+                ctx.beginPath();
+                isDrawing = true;
+                updateCoords(e.clientX, e.clientY);
+            });
+            canvas.addEventListener('mousemove', function(e) {
+                if (!isDrawing) return;
+                draw(e.clientX, e.clientY);
+            });
+            canvas.addEventListener('mouseup', function() { isDrawing = false; });
+            canvas.addEventListener('mouseout', function() { isDrawing = false; });
+
+            // Touch events
+            canvas.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                if (e.touches.length > 0) {
+                    ctx.beginPath();
+                    isDrawing = true;
+                    updateCoords(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            });
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                if (!isDrawing || e.touches.length === 0) return;
+                draw(e.touches[0].clientX, e.touches[0].clientY);
+            });
+            canvas.addEventListener('touchend', function(e) { e.preventDefault(); isDrawing = false; });
+
+            // Buttons
+            document.getElementById('btn-clear').addEventListener('click', function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                isCanvasEmpty = true;
+                document.getElementById('btn-submit').disabled = true;
+            });
+            document.getElementById('btn-submit').addEventListener('click', handleSubmit);
+
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                canvas.width = wrapper.offsetWidth;
+                ctx.putImageData(imgData, 0, 0);
+                ctx.strokeStyle = '#000000';
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.lineWidth = 3;
+            });
+        }
+
+        function updateCoords(clientX, clientY) {
+            var canvas = document.getElementById('signature-canvas');
+            canvasRect = canvas.getBoundingClientRect();
+            lastX = clientX - canvasRect.left;
+            lastY = clientY - canvasRect.top;
+        }
+
+        function draw(clientX, clientY) {
+            var currentX = clientX - canvasRect.left;
+            var currentY = clientY - canvasRect.top;
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            lastX = currentX;
+            lastY = currentY;
+            if (isCanvasEmpty) {
+                isCanvasEmpty = false;
+                document.getElementById('btn-submit').disabled = false;
+            }
+        }
+
+        // ===== STEP 2: SUBMIT SIGNATURE =====
+        function handleSubmit() {
+            if (isCanvasEmpty) return;
+            showState('processing');
+
+            var canvas = document.getElementById('signature-canvas');
+            var dataUrl = canvas.toDataURL('image/png');
+            var base64Image = dataUrl.split(',')[1];
+
+            if (isMultiSigner) {
+                // Multi-signer: save signature first, then check if all complete
+                updateStatus('Saving your signature...');
+                Visualforce.remoting.Manager.invokeAction(
+                    '{!$RemoteAction.DocGenSignatureController.saveSignature}',
+                    token,
+                    base64Image,
+                    function(result, event) {
+                        if (!event.status) {
+                            showError('Save failed: ' + (event.message || 'Unknown error'));
+                            return;
+                        }
+                        if (result.isComplete) {
+                            // Last signer — stamp all signatures and generate PDF
+                            updateStatus('All signatures collected. Generating final document...');
+                            callStampAndReturn(base64Image);
+                        } else {
+                            // Not the last signer — show waiting state
+                            var msg = 'Your signature has been recorded. Waiting for ' +
+                                result.remaining + ' more signer' + (result.remaining > 1 ? 's' : '') +
+                                ' to complete.';
+                            document.getElementById('waiting-message').textContent = msg;
+                            showState('waiting');
+                        }
+                    },
+                    { escape: false, buffer: false, timeout: 120000 }
+                );
+            } else {
+                // Legacy single-signer: stamp immediately
+                updateStatus('Stamping signature onto document...');
+                callStampAndReturn(base64Image);
+            }
+        }
+
+        function callStampAndReturn(base64Image) {
+            Visualforce.remoting.Manager.invokeAction(
+                '{!$RemoteAction.DocGenSignatureController.stampAndReturnSource}',
+                token,
+                base64Image,
+                function(result, event) {
+                    if (!event.status) {
+                        showError('Stamping failed: ' + (event.message || 'Unknown error'));
+                        return;
+                    }
+                    renderPdfAndUpload(result.base64, result.title);
+                },
+                { escape: false, buffer: false, timeout: 120000 }
+            );
+        }
+
+        // ===== STEP 3: RENDER DOCX TO PDF (ported from DocGenPDFEngine.page) =====
+        function renderPdfAndUpload(stampedDocxBase64, fileName) {
+            updateStatus('Rendering document...');
+
+            var binaryString = atob(stampedDocxBase64);
+            var bytes = new Uint8Array(binaryString.length);
+            for (var i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+
+            var container = document.getElementById('pdf-render-zone');
+            container.innerHTML = '';
+
+            var renderOptions = {
+                className: 'docx_viewer',
+                inWrapper: false,
+                ignoreWidth: true,
+                ignoreHeight: true,
+                experimental: true,
+                renderHeaders: true,
+                renderFooters: true
+            };
+
+            docx.renderAsync(blob, container, null, renderOptions).then(function() {
+                updateStatus('Loading images...');
+                return waitForImages(container);
+            }).then(function() {
+                return waitForPaint();
+            }).then(function() {
+                updateStatus('Converting to PDF...');
+
+                var opt = {
+                    margin: 0,
+                    filename: fileName + '.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        letterRendering: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+                    pagebreak: { mode: ['css', 'legacy'] }
+                };
+
+                return html2pdf().from(container).set(opt).output('arraybuffer');
+            }).then(function(arrayBuffer) {
+                var base64Pdf = arrayBufferToBase64(arrayBuffer);
+
+                updateStatus('Uploading signed document...');
+
+                // STEP 4: Upload PDF
+                Visualforce.remoting.Manager.invokeAction(
+                    '{!$RemoteAction.DocGenSignatureController.finishSignatureUpload}',
+                    token,
+                    base64Pdf,
+                    fileName,
+                    function(result, event) {
+                        if (event.status) {
+                            showState('success');
+                        } else {
+                            showError('Upload failed: ' + (event.message || 'Unknown error'));
+                        }
+                    },
+                    { escape: false, buffer: false, timeout: 120000 }
+                );
+            }).catch(function(err) {
+                showError('PDF rendering failed: ' + (err.message || err));
+            });
+        }
+
+        // ===== UTILITY FUNCTIONS (from DocGenPDFEngine.page) =====
+        function waitForImages(container) {
+            var images = container.querySelectorAll('img');
+            var promises = Array.from(images).map(function(img) {
+                if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+                return new Promise(function(resolve) {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                    setTimeout(resolve, 5000);
+                });
+            });
+            return Promise.all(promises);
+        }
+
+        function waitForPaint() {
+            return new Promise(function(resolve) {
+                requestAnimationFrame(function() { requestAnimationFrame(resolve); });
+            });
+        }
+
+        function arrayBufferToBase64(buffer) {
+            var binary = '';
+            var bytes = new Uint8Array(buffer);
+            for (var i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+    })();
+    </script>
+</body>
+</html>
+</apex:page>

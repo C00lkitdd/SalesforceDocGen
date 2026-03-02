@@ -237,17 +237,21 @@ export default class DocGenQueryBuilder extends LightningElement {
         this.notifyChange();
     }
 
+    // Pending subqueries from parseConfig that couldn't be built yet (childOptions not loaded)
+    _pendingSubqueries = null;
+
     @wire(getChildRelationships, { objectName: '$selectedObject' })
     wiredChildren({ error, data }) {
         if (data) {
             this.childOptions = data;
             this.filteredChildOptions = data;
-             if (this._queryConfig && this.childConfigs.length === 0) {
-                 // Try parsing again now that we have relationship map
-                 // But don't overwrite if user already edited? 
-                 // Simple check: if fully empty/init state.
-                 this.parseConfig(this._queryConfig);
-             }
+            // If we have pending subqueries from an earlier parseConfig call, rebuild now
+            if (this._pendingSubqueries && this._pendingSubqueries.length > 0) {
+                this.rebuildChildConfigs(this._pendingSubqueries);
+                this._pendingSubqueries = null;
+            } else if (this._queryConfig && this.childConfigs.length === 0) {
+                this.parseConfig(this._queryConfig);
+            }
         } else if (error) {
             this.childOptions = [];
         }
@@ -364,49 +368,47 @@ export default class DocGenQueryBuilder extends LightningElement {
         }
             
         // 3. Child Configs
-        if (this.childOptions.length === 0) return; 
-        
-        this.rebuildChildConfigs(subqueries);
-        
+        if (subqueries.length > 0) {
+            if (this.childOptions.length === 0) {
+                // childOptions wire hasn't loaded yet — store for later
+                this._pendingSubqueries = subqueries;
+            } else {
+                this._pendingSubqueries = null;
+                this.rebuildChildConfigs(subqueries);
+            }
+        }
+
         // Force tags refresh
         this.selectedFields = [...this.selectedFields];
     }
     
     rebuildChildConfigs(subqueries) {
-        this.childConfigs = [];
-        subqueries.forEach(sub => {
+        // Build all child configs atomically using Promise.all to avoid race conditions
+        const promises = subqueries.map(sub => {
             const relOption = this.childOptions.find(opt => opt.value === sub.relationshipName);
-            if (!relOption) return;
-            
+            if (!relOption) return Promise.resolve(null);
+
             const childObjName = relOption.childObjectApiName;
-            
-            const newChild = {
-                relationshipName: sub.relationshipName,
-                childObjectApiName: childObjName,
-                selectedFields: sub.selectedFields || sub.fields, // Handle both from parse (fields vs selectedFields)
-                whereClause: sub.whereClause || '',
-                orderBy: sub.orderBy || '',
-                limitAmount: sub.limitAmount || '',
-                availableFields: [],
-                filteredFields: [] 
-            };
-            
-            // Load available fields
-            getObjectFields({ objectName: childObjName })
-                .then(data => {
-                    this.childConfigs = this.childConfigs.map(c => {
-                        if (c.relationshipName === newChild.relationshipName) {
-                            return { 
-                                ...c, 
-                                availableFields: data,
-                                filteredFields: data.slice(0, 200) 
-                            };
-                        }
-                        return c;
-                    });
-                });
-                
-            this.childConfigs = [...this.childConfigs, newChild];
+
+            return getObjectFields({ objectName: childObjName })
+                .then(data => ({
+                    relationshipName: sub.relationshipName,
+                    childObjectApiName: childObjName,
+                    selectedFields: sub.selectedFields || sub.fields,
+                    whereClause: sub.whereClause || '',
+                    orderBy: sub.orderBy || '',
+                    limitAmount: sub.limitAmount || '',
+                    availableFields: data,
+                    filteredFields: data.slice(0, 200)
+                }))
+                .catch(() => null);
+        });
+
+        Promise.all(promises).then(results => {
+            this.childConfigs = results.filter(r => r !== null);
+            // Force reactivity refresh for tags
+            this.selectedFields = [...this.selectedFields];
+            this.notifyChange();
         });
     }
     

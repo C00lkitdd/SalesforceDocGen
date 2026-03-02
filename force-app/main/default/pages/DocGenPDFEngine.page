@@ -47,7 +47,7 @@
     </style>
 </head>
     <body>
-        <!-- Standard Letter Width: 816px. Padding creates margins. -->
+        <!-- Standard Letter Width: 816px. Hidden until needed. -->
         <div id="content-zone" style="display:none; width: 816px; margin: 0; background: white; padding: 0; box-sizing: border-box;"></div>
         
         <!-- DOCX Preview for High Fidelity Rendering -->
@@ -55,69 +55,105 @@
         <script src="{!URLFOR($Resource.DocGenEngine, 'docx-preview.js')}"></script>
         
         <script>
+            // Wait for all images in container to finish loading
+            function waitForImages(container) {
+                var images = container.querySelectorAll('img');
+                var promises = Array.from(images).map(function(img) {
+                    if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+                    return new Promise(function(resolve) {
+                        img.onload = resolve;
+                        img.onerror = resolve; // Don't block on failed images
+                        setTimeout(resolve, 5000); // 5s max wait per image
+                    });
+                });
+                return Promise.all(promises);
+            }
+
+            // Wait for browser to finish painting
+            function waitForPaint() {
+                return new Promise(function(resolve) {
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(resolve);
+                    });
+                });
+            }
+
             // Listen for messages from LWC
             window.addEventListener('message', async function(event) {
-                const data = event.data;
+                var data = event.data;
                 if (data.type === 'generate') {
                     console.log('PDF Engine: Received generation request', data.fileName);
-                    
+
                     try {
-                        // docx-preview takes a Blob or ArrayBuffer
-                        const blob = new Blob([data.blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                        
-                        const container = document.getElementById('content-zone');
-                        container.innerHTML = ''; // Clear previous
+                        var blob = new Blob([data.blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+
+                        var container = document.getElementById('content-zone');
+                        container.innerHTML = '';
+                        // Show container for rendering, then hide after
                         container.style.display = 'block';
-                        
-                        // docx-preview renderAsync(document, element, styleContainer, options)
+
                         console.log('PDF Engine: Rendering DOCX via docx-preview...');
-                        
-                        const renderOptions = {
-                            className: 'docx_viewer', 
-                            inWrapper: false, 
-                            ignoreWidth: true, // Force fit to container width
-                            ignoreHeight: false, 
-                            experimental: true
+
+                        var renderOptions = {
+                            className: 'docx_viewer',
+                            inWrapper: false,
+                            ignoreWidth: true,
+                            ignoreHeight: true,
+                            experimental: true,
+                            renderHeaders: true,
+                            renderFooters: true
                         };
-                        
+
                         await docx.renderAsync(blob, container, null, renderOptions);
-                        
-                        console.log('PDF Engine: DOCX Rendered. converting to PDF...');
-                        
-                        // Small delay to ensure rendering is complete (fonts, etc)
-                        setTimeout(() => {
-                             const opt = {
-                                 margin:       0,
-                                 filename:     data.fileName + '.pdf',
-                                 image:        { type: 'jpeg', quality: 0.98 },
-                                 html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-                                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
-                                 pagebreak:    { mode: ['css', 'legacy'] } 
-                             };
-                             
-                             const worker = html2pdf().from(container).set(opt);
-                             
-                             if (data.mode === 'save') {
-                                 // Return blob to LWC for saving to record
-                                 worker.output('arraybuffer').then(buffer => {
-                                     console.log('PDF Engine: Blob generated for saving.');
-                                     sendSuccess(buffer, data.fileName);
-                                 }).catch(err => {
-                                     console.error(err);
-                                     sendError('PDF Blob Generation Failed: ' + err.message);
-                                 });
-                             } else {
-                                 // Standard download
-                                 worker.save().then(() => {
-                                     console.log('PDF Engine: Download triggered.');
-                                     sendSuccess();
-                                 }).catch(err => {
-                                     console.error(err);
-                                     sendError('PDF Generation Failed: ' + err.message);
-                                 });
-                             }
-                        }, 1000); // 1s wait for render
-                        
+
+                        console.log('PDF Engine: DOCX Rendered. Waiting for images and paint...');
+
+                        // Wait for all images to load + browser paint
+                        await waitForImages(container);
+                        await waitForPaint();
+
+                        console.log('PDF Engine: All resources loaded. Converting to PDF...');
+
+                        var opt = {
+                            margin:       0,
+                            filename:     data.fileName + '.pdf',
+                            image:        { type: 'jpeg', quality: 0.98 },
+                            html2canvas:  {
+                                scale: 2,
+                                useCORS: true,
+                                allowTaint: true,
+                                letterRendering: true,
+                                logging: false,
+                                backgroundColor: '#ffffff'
+                            },
+                            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
+                            pagebreak:    { mode: ['css', 'legacy'] }
+                        };
+
+                        var worker = html2pdf().from(container).set(opt);
+
+                        if (data.mode === 'save') {
+                            worker.output('arraybuffer').then(function(buffer) {
+                                console.log('PDF Engine: Blob generated for saving.');
+                                container.style.display = 'none';
+                                sendSuccess(buffer, data.fileName);
+                            }).catch(function(err) {
+                                console.error(err);
+                                container.style.display = 'none';
+                                sendError('PDF Blob Generation Failed: ' + err.message);
+                            });
+                        } else {
+                            worker.save().then(function() {
+                                console.log('PDF Engine: Download triggered.');
+                                container.style.display = 'none';
+                                sendSuccess();
+                            }).catch(function(err) {
+                                console.error(err);
+                                container.style.display = 'none';
+                                sendError('PDF Generation Failed: ' + err.message);
+                            });
+                        }
+
                     } catch (e) {
                          console.error('Render Error', e);
                          sendError('Render Error: ' + e.message);
@@ -130,8 +166,8 @@
             }
 
             function sendSuccess(blob, fileName) {
-                window.parent.postMessage({ 
-                    type: 'docgen_success', 
+                window.parent.postMessage({
+                    type: 'docgen_success',
                     blob: blob,
                     fileName: fileName
                 }, '*');

@@ -46,6 +46,7 @@
     <types>
         <members>DocGenPDFEngine</members>
         <members>DocGenSign</members>
+        <members>DocGenSignature</members>
         <members>DocGenVerify</members>
         <name>ApexPage</name>
     </types>
@@ -56,6 +57,9 @@
         <members>DocGen_Template__c</members>
         <members>DocGen_Signature_Request__c</members>
         <members>DocGen_Signature_Audit__c</members>
+        <members>DocGen_Signature_Template__c</members>
+        <members>DocGen_Signature_Template_Role__c</members>
+        <members>DocGen_Signer__c</members>
         <members>DocGen_Settings__c</members>
         <members>DocGen_Rendition_Event__e</members>
         <name>CustomObject</name>
@@ -109,10 +113,6 @@
     <types>
         <members>DocGen_Loopback</members>
         <name>NamedCredential</name>
-    </types>
-    <types>
-        <members>DocGen_Signature_Submission</members>
-        <name>Flow</name>
     </types>
     <version>66.0</version>
 </Package>

@@ -3,31 +3,34 @@ public with sharing class DocGenController {
     @AuraEnabled
     public static Map<String, Object> generateDocumentData(Id templateId, Id recordId) {
         if (templateId == null) throw new DocGenException('Template ID is missing.');
-        
+
         List<DocGen_Template__c> templates = [
             SELECT Base_Object_API__c, Query_Config__c, Type__c, Output_Format__c, Document_Title_Format__c
-            FROM DocGen_Template__c 
-            WHERE Id = :templateId 
+            FROM DocGen_Template__c
+            WHERE Id = :templateId
             WITH USER_MODE
             LIMIT 1
         ];
-        
+
         if (templates.isEmpty()) {
             throw new DocGenException('Template not found or you do not have access.');
         }
         DocGen_Template__c template = templates[0];
-        
+
         Map<String, Object> recordData = DocGenDataRetriever.getRecordData(
-            recordId, 
-            template.Base_Object_API__c, 
+            recordId,
+            template.Base_Object_API__c,
             template.Query_Config__c
         );
-        
+
         String fileContent = DocGenTemplateManager.getTemplateFileContent(templateId);
-        
+
         if (recordData == null) {
             throw new DocGenException('Record data not found.');
         }
+
+        // Pre-resolve Salesforce rich text image URLs to base64 data URIs
+        resolveRichTextImages(recordData);
 
         return new Map<String, Object>{
             'data' => recordData,
@@ -300,7 +303,7 @@ public with sharing class DocGenController {
 
         for (Schema.SObjectField field : objType.getDescribe().fields.getMap().values()) {
             Schema.DescribeFieldResult describe = field.getDescribe();
-            if (describe.isAccessible() && describe.isFilterable()) {
+            if (describe.isAccessible()) {
                 sortedFields.add(new Option(describe.getLabel() + ' (' + describe.getName() + ')', describe.getName()));
             }
         }
@@ -432,7 +435,7 @@ public with sharing class DocGenController {
     public static List<Map<String, String>> searchUsersAndGroups(String searchTerm) {
         String key = '%' + searchTerm + '%';
         List<Map<String, String>> results = new List<Map<String, String>>();
-        
+
         for (User u : [SELECT Id, Name FROM User WHERE Name LIKE :key AND IsActive = TRUE WITH USER_MODE LIMIT 10]) {
              Map<String, String> row = new Map<String, String>();
              row.put('Id', u.Id);
@@ -441,7 +444,7 @@ public with sharing class DocGenController {
              row.put('Icon', 'standard:user');
              results.add(row);
         }
-        
+
         for (Group g : [SELECT Id, Name FROM Group WHERE Name LIKE :key AND Type = 'Regular' WITH USER_MODE LIMIT 10]) {
              Map<String, String> row = new Map<String, String>();
              row.put('Id', g.Id);
@@ -451,5 +454,101 @@ public with sharing class DocGenController {
              results.add(row);
         }
         return results;
+    }
+
+    // --- Rich Text Image Resolution ---
+
+    /**
+     * Recursively walks record data and converts Salesforce rtaImage URLs
+     * in rich text fields to base64 data URIs using the REST API via DocGen_Loopback.
+     * Passes record context (Id, field name) so we can call the richTextImageFields endpoint.
+     */
+    private static void resolveRichTextImages(Object data) {
+        if (data instanceof Map<String, Object>) {
+            Map<String, Object> mapData = (Map<String, Object>) data;
+
+            // Get record Id and object type from this map level
+            String recordId = null;
+            String objectType = null;
+            if (mapData.containsKey('Id')) {
+                try {
+                    recordId = String.valueOf(mapData.get('Id'));
+                    objectType = Id.valueOf(recordId).getSObjectType().getDescribe().getName();
+                } catch (Exception e) {
+                    recordId = null;
+                }
+            }
+
+            for (String key : new List<String>(mapData.keySet())) {
+                Object val = mapData.get(key);
+                if (val instanceof String) {
+                    String strVal = (String) val;
+                    if (strVal.containsIgnoreCase('<img') && strVal.containsIgnoreCase('refid=')) {
+                        mapData.put(key, resolveImageUrlsInHtml(strVal, objectType, recordId, key));
+                    }
+                } else {
+                    resolveRichTextImages(val);
+                }
+            }
+        } else if (data instanceof List<Object>) {
+            for (Object item : (List<Object>) data) {
+                resolveRichTextImages(item);
+            }
+        }
+    }
+
+    /**
+     * Finds Salesforce rich text image references in HTML and replaces them with base64 data URIs
+     * using the REST API: /services/data/vXX.0/sobjects/{Object}/{Id}/richTextImageFields/{Field}/{RefId}
+     */
+    private static String resolveImageUrlsInHtml(String html, String objectType, String recordId, String fieldName) {
+        if (String.isBlank(objectType) || String.isBlank(recordId) || String.isBlank(fieldName)) {
+            return html;
+        }
+
+        // Find all refid values in the HTML
+        Pattern refidPattern = Pattern.compile('(?i)refid=([a-zA-Z0-9]+)');
+        Matcher m = refidPattern.matcher(html.replace('&amp;', '&'));
+        String result = html;
+        Set<String> processed = new Set<String>();
+
+        while (m.find()) {
+            String refId = m.group(1);
+            if (processed.contains(refId)) continue;
+            processed.add(refId);
+
+            try {
+                String apiPath = '/services/data/v66.0/sobjects/' + objectType + '/' + recordId
+                    + '/richTextImageFields/' + fieldName + '/' + refId;
+
+                HttpRequest req = new HttpRequest();
+                req.setEndpoint('callout:DocGen_Loopback' + apiPath);
+                req.setMethod('GET');
+                req.setTimeout(15000);
+                Http h = new Http();
+                HttpResponse res = h.send(req);
+
+                if (res.getStatusCode() == 200) {
+                    String contentType = res.getHeader('Content-Type');
+                    if (String.isBlank(contentType) || !contentType.startsWith('image/')) {
+                        contentType = 'image/png';
+                    }
+                    String base64 = EncodingUtil.base64Encode(res.getBodyAsBlob());
+                    String dataUri = 'data:' + contentType + ';base64,' + base64;
+
+                    // Replace all img src attributes that reference this refid
+                    Pattern srcPattern = Pattern.compile('(?i)(<img[^>]+src\\s*=\\s*["\'])([^"\']*refid=' + refId + '[^"\']*)(["\'\\s])');
+                    Matcher srcMatcher = srcPattern.matcher(result);
+                    if (srcMatcher.find()) {
+                        result = result.replace(srcMatcher.group(2), dataUri);
+                    }
+                } else {
+                    System.debug('DocGen: richTextImageFields returned ' + res.getStatusCode() + ' for ' + apiPath.left(200));
+                }
+            } catch (Exception e) {
+                System.debug('DocGen: Failed to resolve rich text image: ' + e.getMessage());
+            }
+        }
+        return result;
     }
 }

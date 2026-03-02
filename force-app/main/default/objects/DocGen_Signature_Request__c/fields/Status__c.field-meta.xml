@@ -26,6 +26,11 @@
                 <label>Viewed</label>
             </value>
             <value>
+                <fullName>In Progress</fullName>
+                <default>false</default>
+                <label>In Progress</label>
+            </value>
+            <value>
                 <fullName>Signed</fullName>
                 <default>false</default>
                 <label>Signed</label>
