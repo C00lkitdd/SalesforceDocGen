@@ -2,7 +2,7 @@
 
 **A free, native, production-ready document engine for Salesforce.**
 
-[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg)](#quick-install)
+[![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)](#quick-install)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Salesforce-00A1E0.svg)](https://www.salesforce.com)
 
@@ -20,22 +20,27 @@ This project gives you a professional-grade document engine -- template manageme
 
 ## Quick Install
 
-**Subscriber Package Version ID**: `04tdL000000OowXQAS`
+**Subscriber Package Version ID**: `04tdL000000OpEHQA0`
 
 **CLI:**
 ```bash
-sf package install --package 04tdL000000OowXQAS --wait 10 --installation-key-bypass
+sf package install --package 04tdL000000OpEHQA0 --wait 10 --installation-key-bypass
 ```
 
 **Browser:**
-- [Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000OowXQAS)
-- [Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000OowXQAS)
+- [Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000OpEHQA0)
+- [Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000OpEHQA0)
 
 > Select **Install for Admins Only** during installation, then assign permission sets to your users afterward.
 
 ---
 
-## What's New in v0.7.0
+## What's New in v0.8.0
+
+- **Fix Package Uninstall Blockers** -- AuthProvider, ExternalCredential, NamedCredential, CustomSite, and Flow metadata moved out of the 2GP package into `unpackaged/` for post-install setup. These metadata types created cross-references that prevented clean package uninstall.
+- **External Client App Terminology** -- Setup wizard Step 1 updated from Connected App to External Client App to match current Salesforce terminology.
+
+### v0.7.0
 
 - **Bulk PDF Generation Fix** -- All records in a bulk generation job now correctly receive PDF renditions, not just the first. Renditions are accumulated across batch transactions via `Database.Stateful` and enqueued as a single job from `finish()`.
 - **Transaction Finalizer Retries** -- PDF rendition retries now use `System.attachFinalizer()` instead of direct queueable chaining, avoiding Salesforce's 5-level queueable depth limit.
@@ -245,7 +250,7 @@ Go to **Setup > Permission Sets**, open the appropriate set, and click **Manage 
 
 1. Navigate to the **DocGen Setup** tab in the DocGen app
 2. Follow the 4-step wizard:
-   - **Step 1:** Create a Connected App named "DocGen Loopback" with OAuth scopes `api` and `refresh_token`
+   - **Step 1:** Create an External Client App named "DocGen Loopback" with OAuth scopes `api` and `refresh_token`
    - **Step 2:** Create an Auth Provider using the Consumer Key/Secret from Step 1
    - **Step 3:** Create a Named Credential (`DocGen_Loopback`) with the External Credential, then authenticate as a named principal
    - **Step 4:** Configure your Salesforce Site URL for public signature links
